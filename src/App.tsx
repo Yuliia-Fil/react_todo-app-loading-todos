@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UserWarning } from './UserWarning';
 import { addTodo, getTodos, USER_ID } from './api/todos';
 
@@ -11,50 +11,10 @@ import { ErrorMessage } from './types/ErrorMessage';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [activeTodos, setActiveTodos] = useState<Todo[]>([]);
-  const [completedTodos, setCompletedTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState('');
   const [errorMessage, setErrorMessage] = useState<ErrorMessage>('');
   const [loading, setLoading] = useState(true);
   const [activeLink, setActiveLink] = useState('all');
-
-  const updateTodos = useCallback(
-    (link = activeLink) => {
-      switch (link) {
-        case 'all':
-          getTodos()
-            .then(allTodos => {
-              setTodos(allTodos);
-              setActiveTodos(allTodos.filter(todo => !todo.completed));
-              setCompletedTodos(allTodos.filter(todo => todo.completed));
-            })
-            .catch(() => setErrorMessage('Unable to load todos'))
-            .finally(() => setLoading(false));
-          break;
-        case 'active':
-          getTodos()
-            .then(allTodos => {
-              setTodos(allTodos.filter(todo => !todo.completed));
-              setActiveTodos(allTodos.filter(todo => !todo.completed));
-              setCompletedTodos(allTodos.filter(todo => todo.completed));
-            })
-            .catch(() => setErrorMessage('Unable to load todos'))
-            .finally(() => setLoading(false));
-          break;
-        case 'completed':
-          getTodos()
-            .then(allTodos => {
-              setTodos(allTodos.filter(todo => todo.completed));
-              setActiveTodos(allTodos.filter(todo => !todo.completed));
-              setCompletedTodos(allTodos.filter(todo => todo.completed));
-            })
-            .catch(() => setErrorMessage('Unable to load todos'))
-            .finally(() => setLoading(false));
-          break;
-      }
-    },
-    [activeLink],
-  );
 
   const timeoutRef = useRef<number | null>(null);
 
@@ -78,7 +38,12 @@ export const App: React.FC = () => {
     };
   }, [errorMessage]);
 
-  useEffect(() => updateTodos(), [updateTodos]);
+  useEffect(() => {
+    getTodos()
+      .then(allTodos => setTodos(allTodos))
+      .catch(() => setErrorMessage('Unable to load todos'))
+      .finally(() => setLoading(false));
+  }, []);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -114,7 +79,6 @@ export const App: React.FC = () => {
                 completed: false,
               })
                 .then(() => {
-                  updateTodos();
                   setTitle('');
                 })
                 .catch(error => {
@@ -138,21 +102,33 @@ export const App: React.FC = () => {
         </header>
 
         <section className="todoapp__main" data-cy="TodoList">
-          {todos.map(todo => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              loading={loading}
-              updateTodos={updateTodos}
-            />
-          ))}
+          {todos
+            .filter(todo => {
+              switch (activeLink) {
+                case 'all':
+                  return true;
+                case 'active':
+                  return !todo.completed;
+                case 'completed':
+                  return todo.completed;
+              }
+            })
+            .map(todo => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                loading={loading}
+                // updateTodos={updateTodos}
+              />
+            ))}
         </section>
 
         {/* Hide the footer if there are no todos */}
         {todos.length > 0 && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              {`${activeTodos.length} items left`}
+              {/* {`${activeTodos.length} items left`} */}
+              {`4 items left`}
             </span>
 
             {/* Active link should have the 'selected' class */}
@@ -165,7 +141,6 @@ export const App: React.FC = () => {
                 data-cy="FilterLinkAll"
                 onClick={() => {
                   setActiveLink('all');
-                  updateTodos('all');
                 }}
               >
                 All
@@ -179,7 +154,6 @@ export const App: React.FC = () => {
                 data-cy="FilterLinkActive"
                 onClick={() => {
                   setActiveLink('active');
-                  updateTodos('active');
                 }}
               >
                 Active
@@ -193,7 +167,6 @@ export const App: React.FC = () => {
                 data-cy="FilterLinkCompleted"
                 onClick={() => {
                   setActiveLink('completed');
-                  updateTodos('completed');
                 }}
               >
                 Completed
@@ -205,7 +178,7 @@ export const App: React.FC = () => {
               type="button"
               className="todoapp__clear-completed"
               data-cy="ClearCompletedButton"
-              disabled={completedTodos.length === 0 ? true : false}
+              // disabled={completedTodos.length === 0 ? true : false}
             >
               Clear completed
             </button>
